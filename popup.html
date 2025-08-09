@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Study Helper</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="popup">
+    <header class="app-header">
+      <div class="logo-circle" aria-hidden="true">Q?</div>
+      <h1 class="app-title">Quick Q&A</h1>
+    </header>
+    <div class="card">
+      <label class="field-label" for="question">Question</label>
+      <div class="textarea-wrapper">
+        <textarea id="question" placeholder="Ask a concise question"></textarea>
+        <div class="resize-grip" aria-hidden="true"></div>
+      </div>
+      <div class="row">
+        <label class="visually-hidden" for="style">Answer style</label>
+        <select id="style" aria-label="Answer style">
+          <option value="concise">Concise</option>
+          <option value="detailed">Detailed</option>
+          <option value="bullets">Bullets</option>
+        </select>
+        <button id="ask" class="primary">Ask</button>
+      </div>
+      <label class="toggle" title="Always open popup panel when the page loads">
+        <input type="checkbox" id="autoPanel" />
+        <span class="toggle-indicator" aria-hidden="true"></span>
+        <span class="toggle-label">Auto open floating panel</span>
+      </label>
+      <div id="result" class="result empty">Enter a question to begin.</div>
+      <div class="actions">
+        <button id="copy" title="Copy answer" class="icon-btn" disabled>
+          📋
+        </button>
+        <button id="clear" title="Clear" class="icon-btn" disabled>✕</button>
+        <a
+          href="options.html"
+          target="_blank"
+          class="settings-link"
+          title="Settings"
+          >⚙️</a
+        >
+      </div>
+    </div>
+    <p class="note">Study use only. Do not use for unauthorized assessments.</p>
+    <script src="popup.js"></script>
+  </body>
+</html>
