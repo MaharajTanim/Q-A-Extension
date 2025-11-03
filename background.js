@@ -1,9 +1,8 @@
 // background.js
-// Creates context menu and handles messaging + Gemini API calls.
+// Creates context menu and handles messaging + DeepSeek R1 API calls via OpenRouter.
 // Adds dynamic model selection & improved error diagnostics.
 
-const DEFAULT_MODEL = "gemini-1.5-flash"; // modern lightweight model
-const FALLBACK_MODEL_OLD = "gemini-pro"; // legacy name in case user stored it
+const DEFAULT_MODEL = "deepseek/deepseek-chat"; // DeepSeek Chat - faster alternative
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -23,87 +22,94 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === "GEMINI_REQUEST") {
-    handleGeminiRequest(msg.payload).then(sendResponse); // sendResponse async
+  if (msg.type === "DEEPSEEK_REQUEST") {
+    handleDeepSeekRequest(msg.payload).then(sendResponse);
     return true; // keep port open
   }
 });
 
 async function getConfig() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(["geminiApiKey", "geminiModel"], (data) => {
+    chrome.storage.sync.get(["openrouterApiKey", "aiModel"], (data) => {
       resolve({
-        apiKey: data.geminiApiKey || "",
-        model: data.geminiModel || DEFAULT_MODEL,
+        apiKey: data.openrouterApiKey || "",
+        model: data.aiModel || DEFAULT_MODEL,
       });
     });
   });
 }
 
-async function handleGeminiRequest({ prompt, style = "concise" }) {
+async function handleDeepSeekRequest({ prompt, style = "concise" }) {
   const { apiKey, model } = await getConfig();
   if (!apiKey) {
     return { ok: false, error: "No API key set. Add it in extension options." };
   }
 
   const effectiveModel = model || DEFAULT_MODEL;
-
   const styleInstruction = buildStyleInstruction(style);
 
   const body = {
-    contents: [
+    model: effectiveModel,
+    messages: [
       {
-        parts: [
-          {
-            text: `You are an academic Q&A assistant. Follow user style instructions. try providing the correct answers; try to avoid wrong answers; try to understand the question deeply.\nDesired style: ${styleInstruction}\nQuestion: ${prompt}`,
-          },
-        ],
+        role: "system",
+        content: `You are an academic Q&A assistant. Follow user style instructions. Try providing the correct answers; try to avoid wrong answers; try to understand the question deeply.\nDesired style: ${styleInstruction}`,
+      },
+      {
+        role: "user",
+        content: prompt,
       },
     ],
   };
 
-  // Try new stable v1 endpoint first, then fall back to v1beta if 404
-  const baseUrls = [
-    `https://generativelanguage.googleapis.com/v1/models/${effectiveModel}:generateContent?key=${apiKey}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/${effectiveModel}:generateContent?key=${apiKey}`,
-  ];
+  // Use OpenRouter API endpoint
+  const url = `https://openrouter.ai/api/v1/chat/completions`;
 
-  let lastErrorText = "";
-  for (const url of baseUrls) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        const snippet = await safeReadText(res);
-        lastErrorText = `HTTP ${res.status}: ${truncate(snippet, 260)}`;
-        // If 404 or 400, try next variant; else break immediately
-        if (
-          res.status !== 404 &&
-          !(res.status === 400 && url.includes("v1/"))
-        ) {
-          return { ok: false, error: lastErrorText };
-        }
-        continue; // attempt fallback
-      }
-      const data = await res.json();
-      const text =
-        data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("\n") ||
-        "No response.";
-      return { ok: true, text };
-    } catch (e) {
-      lastErrorText = e.message;
+  try {
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://github.com/MaharajTanim/Q-A-Extension",
+        "X-Title": "Study Helper Extension",
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const snippet = await safeReadText(res);
+      return {
+        ok: false,
+        error: `HTTP ${res.status}: ${truncate(
+          snippet,
+          300
+        )}. Try checking: 1) API key validity at OpenRouter, 2) Model availability, 3) Network connection.`,
+      };
     }
+
+    const data = await res.json();
+    const text = data?.choices?.[0]?.message?.content || "No response.";
+    return { ok: true, text };
+  } catch (e) {
+    if (e.name === "AbortError") {
+      return {
+        ok: false,
+        error: `Request timeout after 60 seconds. DeepSeek R1 is reasoning-heavy and can be slow. Try: 1) Using a faster model like 'DeepSeek Chat' in settings, 2) Asking simpler questions, 3) Waiting a bit longer.`,
+      };
+    }
+    return {
+      ok: false,
+      error: `Request failed: ${e.message}. Check network connection and API key.`,
+    };
   }
-  // If we reach here, both attempts failed. Provide guidance.
-  return {
-    ok: false,
-    error:
-      lastErrorText ||
-      "Failed calling Gemini API. Check model name, key validity, and network restrictions.",
-  };
 }
 
 async function safeReadText(res) {

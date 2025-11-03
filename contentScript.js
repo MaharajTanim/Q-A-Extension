@@ -48,7 +48,7 @@ function updatePanel(data) {
 
 function requestHints(prompt) {
   chrome.runtime.sendMessage(
-    { type: "GEMINI_REQUEST", payload: { prompt } },
+    { type: "DEEPSEEK_REQUEST", payload: { prompt } },
     (resp) => {
       chrome.runtime.sendMessage({ type: "STUDY_HELPER_RESPONSE", data: resp });
     }

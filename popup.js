@@ -47,7 +47,10 @@ function runQuery() {
   resultEl.classList.remove("error", "empty");
   setLoading(true);
   chrome.runtime.sendMessage(
-    { type: "GEMINI_REQUEST", payload: { prompt: text, style: styleEl.value } },
+    {
+      type: "DEEPSEEK_REQUEST",
+      payload: { prompt: text, style: styleEl.value },
+    },
     (resp) => {
       setLoading(false);
       if (!resp || !resp.ok) {
