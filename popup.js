@@ -6,6 +6,11 @@ const resultEl = document.getElementById("result");
 const copyBtn = document.getElementById("copy");
 const clearBtn = document.getElementById("clear");
 const autoPanelChk = document.getElementById("autoPanel");
+const imageUploadInput = document.getElementById("imageUpload");
+const uploadBtn = document.getElementById("uploadBtn");
+const imageIndicator = document.getElementById("imageIndicator");
+
+let selectedImageData = null;
 
 // Restore autoPanel setting
 chrome.storage.sync.get(["autoPanel"], (data) => {
@@ -14,6 +19,24 @@ chrome.storage.sync.get(["autoPanel"], (data) => {
 });
 autoPanelChk?.addEventListener("change", () => {
   chrome.storage.sync.set({ autoPanel: autoPanelChk.checked });
+});
+
+// Handle image upload
+uploadBtn.addEventListener("click", () => {
+  imageUploadInput.click();
+});
+
+imageUploadInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      selectedImageData = event.target.result;
+      imageIndicator.textContent = `📎 ${file.name}`;
+      imageIndicator.style.display = "inline";
+    };
+    reader.readAsDataURL(file);
+  }
 });
 
 askBtn.addEventListener("click", runQuery);
@@ -35,6 +58,10 @@ clearBtn.addEventListener("click", () => {
   resultEl.classList.add("empty");
   copyBtn.disabled = true;
   clearBtn.disabled = true;
+  selectedImageData = null;
+  imageIndicator.textContent = "";
+  imageIndicator.style.display = "none";
+  imageUploadInput.value = "";
 });
 
 function runQuery() {
@@ -48,8 +75,8 @@ function runQuery() {
   setLoading(true);
   chrome.runtime.sendMessage(
     {
-      type: "DEEPSEEK_REQUEST",
-      payload: { prompt: text, style: styleEl.value },
+      type: "GROQ_REQUEST",
+      payload: { prompt: text, style: styleEl.value, imageData: selectedImageData },
     },
     (resp) => {
       setLoading(false);
@@ -61,6 +88,11 @@ function runQuery() {
         resultEl.textContent = resp.text;
         copyBtn.disabled = false;
         clearBtn.disabled = false;
+        // Clear image after successful query
+        selectedImageData = null;
+        imageIndicator.textContent = "";
+        imageIndicator.style.display = "none";
+        imageUploadInput.value = "";
       }
     }
   );
