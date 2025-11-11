@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Quick Q&A (Gemini)",
-  "description": "Ask concise questions and get quick AI answers with optional explanations. For study use only.",
+  "name": "Quick Q&A (Groq Vision)",
+  "description": "Ask questions with optional image upload and get AI answers with vision support via Groq. For study use only.",
   "version": "0.1.0",
   "permissions": [
     "contextMenus",
@@ -12,7 +12,7 @@
   ],
   "host_permissions": [
     "<all_urls>",
-    "https://generativelanguage.googleapis.com/*"
+    "https://api.groq.com/*"
   ],
   "action": {
     "default_title": "Study Helper",
