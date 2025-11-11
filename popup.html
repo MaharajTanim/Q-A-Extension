@@ -17,6 +17,11 @@
         <textarea id="question" placeholder="Ask a concise question"></textarea>
         <div class="resize-grip" aria-hidden="true"></div>
       </div>
+      <div class="image-upload-section">
+        <input type="file" id="imageUpload" accept="image/*" style="display: none;" />
+        <button id="uploadBtn" class="secondary" type="button">📷 Upload Image</button>
+        <span id="imageIndicator" class="image-indicator"></span>
+      </div>
       <div class="row">
         <label class="visually-hidden" for="style">Answer style</label>
         <select id="style" aria-label="Answer style">

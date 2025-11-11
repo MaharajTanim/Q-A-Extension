@@ -1,8 +1,8 @@
 // background.js
-// Creates context menu and handles messaging + DeepSeek R1 API calls via OpenRouter.
-// Adds dynamic model selection & improved error diagnostics.
+// Creates context menu and handles messaging + Groq API calls with vision support.
 
-const DEFAULT_MODEL = "deepseek/deepseek-chat"; // DeepSeek Chat - faster alternative
+const DEFAULT_MODEL = "llama-3.2-90b-vision-preview"; // Groq vision model
+const DEFAULT_API_KEY = "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";
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.create({
@@ -22,24 +22,24 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 });
 
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
-  if (msg.type === "DEEPSEEK_REQUEST") {
-    handleDeepSeekRequest(msg.payload).then(sendResponse);
+  if (msg.type === "GROQ_REQUEST") {
+    handleGroqRequest(msg.payload).then(sendResponse);
     return true; // keep port open
   }
 });
 
 async function getConfig() {
   return new Promise((resolve) => {
-    chrome.storage.sync.get(["openrouterApiKey", "aiModel"], (data) => {
+    chrome.storage.sync.get(["groqApiKey", "aiModel"], (data) => {
       resolve({
-        apiKey: data.openrouterApiKey || "",
+        apiKey: data.groqApiKey || DEFAULT_API_KEY,
         model: data.aiModel || DEFAULT_MODEL,
       });
     });
   });
 }
 
-async function handleDeepSeekRequest({ prompt, style = "concise" }) {
+async function handleGroqRequest({ prompt, style = "concise", imageData = null }) {
   const { apiKey, model } = await getConfig();
   if (!apiKey) {
     return { ok: false, error: "No API key set. Add it in extension options." };
@@ -47,6 +47,25 @@ async function handleDeepSeekRequest({ prompt, style = "concise" }) {
 
   const effectiveModel = model || DEFAULT_MODEL;
   const styleInstruction = buildStyleInstruction(style);
+
+  // Build message content based on whether image is present
+  let userContent;
+  if (imageData) {
+    userContent = [
+      {
+        type: "text",
+        text: prompt,
+      },
+      {
+        type: "image_url",
+        image_url: {
+          url: imageData,
+        },
+      },
+    ];
+  } else {
+    userContent = prompt;
+  }
 
   const body = {
     model: effectiveModel,
@@ -57,13 +76,13 @@ async function handleDeepSeekRequest({ prompt, style = "concise" }) {
       },
       {
         role: "user",
-        content: prompt,
+        content: userContent,
       },
     ],
   };
 
-  // Use OpenRouter API endpoint
-  const url = `https://openrouter.ai/api/v1/chat/completions`;
+  // Use Groq API endpoint
+  const url = `https://api.groq.com/openai/v1/chat/completions`;
 
   try {
     // Add timeout to prevent hanging
@@ -75,8 +94,6 @@ async function handleDeepSeekRequest({ prompt, style = "concise" }) {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://github.com/MaharajTanim/Q-A-Extension",
-        "X-Title": "Study Helper Extension",
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -91,7 +108,7 @@ async function handleDeepSeekRequest({ prompt, style = "concise" }) {
         error: `HTTP ${res.status}: ${truncate(
           snippet,
           300
-        )}. Try checking: 1) API key validity at OpenRouter, 2) Model availability, 3) Network connection.`,
+        )}. Try checking: 1) API key validity, 2) Model availability, 3) Network connection.`,
       };
     }
 
@@ -102,7 +119,7 @@ async function handleDeepSeekRequest({ prompt, style = "concise" }) {
     if (e.name === "AbortError") {
       return {
         ok: false,
-        error: `Request timeout after 60 seconds. DeepSeek R1 is reasoning-heavy and can be slow. Try: 1) Using a faster model like 'DeepSeek Chat' in settings, 2) Asking simpler questions, 3) Waiting a bit longer.`,
+        error: `Request timeout after 60 seconds. Try: 1) Using a faster model in settings, 2) Asking simpler questions, 3) Waiting a bit longer.`,
       };
     }
     return {

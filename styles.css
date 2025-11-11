@@ -172,6 +172,49 @@ button.primary:disabled {
   opacity: 0.55;
   cursor: not-allowed;
 }
+button.secondary {
+  background: #f8fafc;
+  color: #4a5568;
+  border: 1px solid #c7d4e5;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: background 0.2s, border-color 0.2s, transform 0.2s;
+}
+button.secondary:hover:not(:disabled) {
+  background: #e8eef5;
+  border-color: #a8b9d1;
+}
+button.secondary:active:not(:disabled) {
+  transform: translateY(1px);
+}
+button.secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.image-upload-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.image-indicator {
+  font-size: 12px;
+  color: #4a5568;
+  display: none;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
 
 .result {
   white-space: pre-wrap;
